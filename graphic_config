@@ -1,0 +1,4 @@
+game GraphicInterface.GraphicInterfaceController
+about GraphicInterface.View.Menu.GraphicAbout
+scores GraphicInterface.View.Menu.GraphicHighScores
+exit GraphicInterface.View.Menu.GraphicExit

@@ -1,0 +1,4 @@
+about TextInterface.View.Menu.TextAbout
+scores TextInterface.View.Menu.TextHighScores
+exit TextInterface.View.Menu.TextExit
+new TextInterface.View.Menu.TextNewGame
