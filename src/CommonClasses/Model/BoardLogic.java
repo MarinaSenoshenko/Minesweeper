@@ -23,25 +23,11 @@ public class BoardLogic {
 		boardDigit = new int[boardWidth][boardHeight];
 		
 		for (int y = 0; y < boardHeight; y++) {
-    		for (int x = 0; x < boardWidth; x++) {
+    		    for (int x = 0; x < boardWidth; x++) {
     			boardDigit[x][y] = 10;
-        	}
-    	}
+        	    }
+		}
 	}
-	
-	public boolean isSuccess() {
-        int count = 0;
-
-        for (int y = 0; y < boardHeight; y++) {
-            for (int x = 0; x < boardWidth; x++) {
-                if (field[x][y].getTraverse()) {
-                    count++;
-                }
-            }
-        }
-
-        return count == boardHeight * boardWidth;
-    }
 	
 	private boolean hasKickedBoundary(int x, int y) {
 	     return x < 0 || x >= boardWidth || y < 0 || y >= boardHeight;
@@ -84,6 +70,8 @@ public class BoardLogic {
 	        }
 	    }
 	}
+	
+	
 
 	public int getFirstCellY() {
 		return firstCellY;
