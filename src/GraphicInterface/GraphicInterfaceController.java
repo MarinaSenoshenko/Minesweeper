@@ -1,23 +1,19 @@
 package GraphicInterface;
 
 import javax.swing.*;
-
 import CommonClasses.TimeConverter;
-import CommonClasses.TimeCounter;
-import CommonClasses.Model.BoardLogic;
 import CommonClasses.Model.FieldChecker;
 import CommonClasses.Model.GameEndOrBegin;
-import CommonClasses.Model.ProduceBombs;
+import CommonClasses.Model.OpenCell;
 import GraphicInterface.View.Board.GameSquare;
 import GraphicInterface.View.Board.SmartBoard;
 import GraphicInterface.View.Board.SmartSquare;
 import GraphicInterface.View.Menu.ButtonInterface;
 import GraphicInterface.View.Menu.GraphicInterfaceMenu;
-
 import java.awt.*;
 import java.awt.event.*;
 
-public class GraphicInterfaceController extends JFrame implements ButtonInterface, ActionListener {
+public class GraphicInterfaceController implements ButtonInterface, ActionListener {
 	
 	private int boardHeight;
 	private int boardWidth;
@@ -25,11 +21,12 @@ public class GraphicInterfaceController extends JFrame implements ButtonInterfac
 	private JPanel boardPanel = new JPanel();
 	private JButton back = new JButton("back");
 	private JLabel subtitle = new JLabel();
+	private JFrame frame;
 	private GameSquare[][] gameSquare;
 	private SmartBoard smartBoard;
 	private FieldChecker[][] field;	
-	private BoardLogic logic;	
 	private GameEndOrBegin gameEndOrBegin;
+	private OpenCell open;
 	
 	public GraphicInterfaceController() {
 		super();
@@ -38,19 +35,22 @@ public class GraphicInterfaceController extends JFrame implements ButtonInterfac
 
 	
 	@Override
-	public void doCommand(int width, int height, int bombs, String fileName) {		
+	public void doCommand(int width, int height, int bombs, String fileName) {	
+		
+		frame = new JFrame();
 		
 		this.boardWidth = width;
 		this.boardHeight = height;		
 		this.bombs = bombs;
+		
 
 		gameEndOrBegin.setTryFirst(true);
 	
 	    this.gameSquare = new GameSquare[width][height];    
 	    this.field = new FieldChecker[width][height];
 
-		setResizable(false);
-		setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+		frame.setResizable(false);
+		frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
 		
         boardPanel.setLayout(new GridLayout(height, width));	
 
@@ -64,101 +64,61 @@ public class GraphicInterfaceController extends JFrame implements ButtonInterfac
 			}
 		}
 		
-		smartBoard = new SmartBoard(height, width, gameSquare);
+		smartBoard = new SmartBoard(height, width, gameSquare);	
 				
-		add(boardPanel);
+		frame.add(boardPanel);
 		
-		setSize(20 + width * 20, height * 20 + 80);
+		frame.setSize(20 + width * 20, height * 20 + 80);
 		
 		ImageIcon icon = new ImageIcon(getClass().getResource("/icon.png"));
-    	setIconImage(icon.getImage());
+		frame.setIconImage(icon.getImage());
     	
-    	add(back, BorderLayout.NORTH);
+		frame.add(back, BorderLayout.NORTH);
     	back.addActionListener(this); 
     	
     	subtitle = new JLabel("tap to play!");
-        add(subtitle, BorderLayout.AFTER_LAST_LINE);
+    	frame.add(subtitle, BorderLayout.AFTER_LAST_LINE);
      
-		setVisible(true);
+    	frame.setVisible(true);
+    	
+    	open = new OpenCell(true, this, field, gameEndOrBegin, boardHeight, boardWidth, bombs);
 	}
 
 	public void actionPerformed(ActionEvent e) {
 		if (e.getSource() == back) {
 			gameEndOrBegin.setGameExists(false);
-			this.dispose();
+			frame.dispose();
 			new GraphicInterfaceMenu("Minesweeper");
 		}
 		else {			
 		    GameSquare b = (GameSquare)e.getSource();
 		    
 		    int x = b.getxLocation();
-		    int y = b.getyLocation();		    
+		    int y = b.getyLocation();		    		
 		    
-		    if (gameEndOrBegin.isTryFirst()) {
-		    	gameEndOrBegin.setGameExists(true);
-		    	gameEndOrBegin.setTryFirst(false);		    	
-				logic = new BoardLogic(boardHeight, boardWidth,  x, y, bombs, field);
-				new ProduceBombs((this.getHeight() - 20) / 20 - 3, (this.getWidth() - 20) / 20, bombs, logic, field);				
-				new TimeCounter(this, true);		    	
-			}	    		
+		    open.open(x, y);
+		    smartBoard.game(open.getLogic().getBoard());
 		    
-		    field[x][y].setGuessThisSquareIsBomb(false);	
-		    field[x][y].setTraverse(false);
-			
-		    logic.countBomb(field[x][y].getxLocation(), field[x][y].getyLocation());				
-			smartBoard.game(getLogic());
-		    
-		    if (field[x][y].getBombExist()) {
-		    	gameEndOrBegin.setGameExists(false);
-				((SmartSquare)b).loseWindow();
-				window("You lose. Do you want to try again?", "Game Over",
-						new ImageIcon(SmartSquare.class.getResource("/failFace.png")));	
-				dispose();
+		    if (open.getIsLose()) {
+				((SmartSquare)b).loseWindow(frame);
+			     frame.dispose();
 			} 
-				
-		    if (logic.isSuccess()) {
-		    	gameEndOrBegin.setGameExists(false);
-		    	((SmartSquare)b).winWindow();
-		    	window("You win this game in " + TimeConverter.calculateTime(TimeCounter.getCostTime()) +
-		                "! Do you want to try again?","Congratulations",
-						new ImageIcon(SmartSquare.class.getResource("/passFace.jpg"))); 
-		    	dispose();
-			}		    
-		}
-	}
 		
+		    if (open.isSuccess()) {
+		    	gameEndOrBegin.setGameExists(false);
+		    	((SmartSquare)b).winWindow(frame);
+		    	frame.dispose();
+			}
+		}
+	}		
 	
 	public void printTimeInSec(long costTime) {
 	    if (costTime % 1000 <= 1) {
 	    	subtitle.setVisible(false);
             subtitle = new JLabel(TimeConverter.calculateTime(costTime / 1000 * 1000));
-            add(subtitle, BorderLayout.AFTER_LAST_LINE);
-            setVisible(true);
+            frame.add(subtitle, BorderLayout.AFTER_LAST_LINE);
+            frame.setVisible(true);
 	    }
-	}
-	
-	public void window(String msg, String title, Icon img) {
-		int choose = JOptionPane.showConfirmDialog(this, msg, title,
-				JOptionPane.YES_NO_OPTION, JOptionPane.QUESTION_MESSAGE,img);
-
-		if (choose == JOptionPane.YES_OPTION) {
-			new GraphicInterfaceMenu("Minesweeper");
-		}
-	}
-	
-	public GameSquare getSquareAt(int x, int y) {
-		if (x < 0 || x >= boardWidth || y < 0 || y >= boardHeight) {
-			return null;
-		}
-		return gameSquare[x][y];
-	} 
-	
-	public BoardLogic getLogic() {
-		return logic;
-	}
-	
-	public SmartBoard getSmartBoard(){
-		return smartBoard;
 	}
 	
 	public GameEndOrBegin getGameEndOrBegin() {
