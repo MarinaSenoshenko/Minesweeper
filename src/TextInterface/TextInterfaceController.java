@@ -2,45 +2,34 @@ package TextInterface;
 
 import java.util.Scanner;
 import CommonClasses.Context;
-import CommonClasses.SaveNewScore;
-import CommonClasses.TimeConverter;
-import CommonClasses.TimeCounter;
-import CommonClasses.Model.BoardLogic;
 import CommonClasses.Model.FieldChecker;
 import CommonClasses.Model.GameEndOrBegin;
-import CommonClasses.Model.ProduceBombs;
+import CommonClasses.Model.OpenCell;
 import TextInterface.View.Board.BoardView;
 import TextInterface.View.Menu.CommandInterface;
-import TextInterface.View.Menu.TextExit;
 
-public class TextInterfaceController {
-	
+public class TextInterfaceController {	
 	private int boardHeight;
 	private int boardWidth;
 	private int bombs;	
 	private BoardView board;
-	private BoardLogic logic;
 	private FieldChecker[][] field;	
 	private GameEndOrBegin gameEndOrBegin;
+	private OpenCell open;
 		
 	public TextInterfaceController() throws Exception {   
     	Scanner scan = new Scanner(System.in);
-
-    	gameEndOrBegin = new GameEndOrBegin();
-  	
+    	gameEndOrBegin = new GameEndOrBegin(); 	
         System.out.println("Chose the level. Write beginner, intermediate or advanced");
+
+        boardHeight = 10;
+        boardWidth = 10; 
+        bombs = 10;
+        String fileName = "beginner.txt";
         
         String level = scan.next().toLowerCase();
-        String fileName = "";
-        
-        if (level.equals("beginner")) {        	 
-        	boardHeight = 10;
-        	boardWidth = 10; 
-        	bombs = 10;
-        	fileName = "beginner.txt";
-        }
-        
-        else if (level.equals("intermediate")) {
+  
+        if (level.equals("intermediate")) {
         	boardHeight = 16;
         	boardWidth = 16; 
         	bombs = 40;
@@ -54,6 +43,10 @@ public class TextInterfaceController {
         	fileName = "advanced.txt";
         }
         
+        else if (!level.equals("beginner")) {
+        	System.out.println("Unknown level. We set you the level beginner");
+        }
+        
         this.field = new FieldChecker[boardWidth][boardHeight];
     	
     	for (int y = 0; y < boardHeight; y++) {
@@ -61,8 +54,11 @@ public class TextInterfaceController {
 			    field[x][y] = new FieldChecker(x, y);
 		    }
 	    }  	
-    	 	
+    	
+    	open = new OpenCell(false, this, field, gameEndOrBegin, boardHeight, boardWidth, bombs);
+    	board = new BoardView(boardHeight, boardWidth, field); 
         Action(scan, level, fileName);      
+       
     }	
 	
 	private void Action(Scanner scan, String level, String fileName) throws Exception {
@@ -79,72 +75,40 @@ public class TextInterfaceController {
             	
             	x = scan.nextInt();
              	y = scan.nextInt();
-            	
-                if (gameEndOrBegin.isTryFirst()) {                	
-                	gameEndOrBegin.setTryFirst(false);
-                	gameEndOrBegin.setGameExists(true);       		
-        		    logic = new BoardLogic(boardHeight, boardWidth, x, y, bombs, field);
-        		    board = new BoardView(boardHeight, boardWidth, logic.getBoard(), field);    
-            	    new ProduceBombs(boardHeight, boardWidth, bombs, logic, field);           	                	    
-            	    new TimeCounter(this, false);            	    
-                }        
-                
-                field[x][y].setGuessThisSquareIsBomb(false);
-          
-        		if (field[x][y].getBombExist()) {	
-        			gameEndOrBegin.setGame(false);
-        			System.out.println("You lose this game. Do you want to restart. Print yes or no: ");  
-        			
-        			String restart = scan.next().toLowerCase();
-    				if (restart.equals("yes")) {
-    					board.printBoard(gameEndOrBegin.getGame()); 
-    					new TextInterfaceController();
-    				}
-    				else if (restart.equals("no")) {
-    					TextExit exit = new TextExit();
-    					exit.doCommand(gameEndOrBegin, scan, level);
-    				}
-        		} 
-        		
-        		else {        			
-        			field[x][y].setTraverse(false);        			
-        			logic.countBomb(field[x][y].getxLocation(), field[x][y].getyLocation());
-        			
-        			if (logic.isSuccess()) {
-        				System.out.println("Enter your name:");
-        				String name = scan.next();
-        				new SaveNewScore(boardHeight, boardWidth, TimeCounter.getCostTime(), name);	
-        				System.out.println("You win this game in " + 
-        				      TimeConverter.calculateTime(TimeCounter.getCostTime()) + 
-        				      " Do you want to restart. Print yes or no: ");
-        				
-        				String restart = scan.next().toLowerCase();
-        				if (restart.equals("yes")) {
-        					board.printBoard(gameEndOrBegin.getGame()); 
-        					new TextInterfaceController();
-        				}
-        				else if (restart.equals("no")) {
-        					TextExit exit = new TextExit();
-        					exit.doCommand(gameEndOrBegin, scan, level);
-        				}
-        			}
-        		}        	
-        		board.printBoard(gameEndOrBegin.getGame());         	
-            }
+             	
+             	if (x < boardWidth && y < boardHeight) { 	           		             		
+             		
+        		    open.open(x, y);
+        		    board.printBoard(gameEndOrBegin.getGame(), open.getLogic().getBoard()); 
+        		    
+        		    if (open.getIsLose()) {	
+            			board.loseMessage();
+            			board.restartGame(scan, gameEndOrBegin, level);
+            		} 
+            		
+        			if (open.isSuccess()) {
+        				board.winMessage(scan, boardHeight, boardWidth);
+        				board.restartGame(scan, gameEndOrBegin, level);
+        			}        		    
+            		  
+             	}
+             	else {
+             		System.out.println("Incorrect x or y");
+             	}
+            }          
             
             else if (action.equals("mine")) {
             	x = scan.nextInt();
              	y = scan.nextInt();
              	
-             	if (logic.getBoardSquare(x, y) == 11) {
-             		logic.setBoardSquare(x, y, 10);
-             	}            	
-             	else {
-            	    logic.setBoardSquare(x, y, 11);
+             	if (x < boardWidth && y < boardHeight) {
+             		board.mineMarker(x, y);             	   
+            	    board.printBoard(gameEndOrBegin.getGame(), open.getLogic().getBoard());
              	}
-            	board.printBoard(gameEndOrBegin.getGame());
+             	else {
+             		System.out.println("Incorrect x or y");
+             	}
             }
-
             else {
             	try {
                     CommandInterface command = (CommandInterface)getOperationClass(action, context).getConstructor().newInstance();      
